@@ -38,6 +38,13 @@ export default function CurrencyInput<TCurrencyVal extends string>({
     formatNumeral(enteredAmount, numeralOptions),
   );
 
+  useEffect(() => {
+    const newEnteredAmount = formatNumeral(enteredAmount, numeralOptions);
+    if (newEnteredAmount !== formattedAmount) {
+      setFormattedAmount(newEnteredAmount);
+    }
+  }, [enteredAmount, formattedAmount]);
+
   // needed to stop the cursor from jumping to the end of the input when the value changes due to formatting
   useEffect(() => {
     if (!amountInputRef.current) return;

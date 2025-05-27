@@ -1,9 +1,10 @@
 "use client";
 
-import { useCalculatorStore } from "@/store";
-import { useMemo, useState } from "react";
+import { useCalculatorStore } from "@/store/store";
+import Decimal from "decimal.js";
+import { useCallback, useMemo, useState } from "react";
 import CurrencyInput from "@/components/currency-input/CurrencyInput";
-import { CURRENCIES } from "@/constants";
+import { CURRENCIES, Currency } from "@/constants";
 
 // TODO: this must be calculated dynamically when a real API is used
 const CURRENCIES_AS_OPTIONS = Object.values(CURRENCIES).map(({ mint, symbol }) => ({
@@ -31,6 +32,27 @@ export default function Home() {
     });
   }, [selectedInputMint]);
 
+  const onSellAmountChange = useCallback(
+    (value: string) => {
+      setInputAmount(value ? value : null);
+      if (value) {
+        const outputValue = calculateExchangeOutput(selectedInputMint, selectedOutputMint, value);
+        setOutputAmount(outputValue);
+      }
+    },
+    [selectedInputMint, selectedOutputMint],
+  );
+  const onBuyAmountChange = useCallback(
+    (value: string) => {
+      setOutputAmount(value ? value : null);
+      if (value) {
+        const outputValue = calculateExchangeOutput(selectedOutputMint, selectedInputMint, value);
+        setInputAmount(outputValue);
+      }
+    },
+    [selectedInputMint, selectedOutputMint],
+  );
+
   return (
     <>
       <CurrencyInput
@@ -38,17 +60,58 @@ export default function Home() {
         currencyOptions={inputOptions}
         selectedCurrency={selectedInputMint}
         enteredAmount={inputAmount ?? ""}
-        onAmountChange={(value) => setInputAmount(value ? value : null)}
-        onCurrencySelect={selectInputMint}
+        onAmountChange={onSellAmountChange}
+        onCurrencySelect={(mint) => {
+          selectInputMint(mint);
+          setInputAmount(null);
+          setOutputAmount(null);
+        }}
       />
       <CurrencyInput
         label="Buy"
         currencyOptions={outputOptions}
         selectedCurrency={selectedOutputMint}
         enteredAmount={outputAmount ?? ""}
-        onAmountChange={(value) => setOutputAmount(value ? value : null)}
-        onCurrencySelect={selectOutputMint}
+        onAmountChange={onBuyAmountChange}
+        onCurrencySelect={(mint) => {
+          selectOutputMint(mint);
+          setInputAmount(null);
+          setOutputAmount(null);
+        }}
       />
     </>
   );
+}
+
+export function calculateExchangeOutput(
+  inputMint: string,
+  outputMint: string,
+  inputAmount: string,
+): string | null {
+  const inputCurrency = Object.values(CURRENCIES).find(({ mint }) => mint === inputMint);
+  const outputCurrency = Object.values(CURRENCIES).find(({ mint }) => mint === outputMint);
+
+  if (!inputCurrency || !outputCurrency) {
+    return null;
+  }
+
+  return calculateExchangeOutputForCurrency(inputCurrency, outputCurrency, inputAmount);
+}
+
+export function calculateExchangeOutputForCurrency(
+  inputCurrency: Currency,
+  outputCurrency: Currency,
+  inputAmount: string,
+): string {
+  const inputAmountAsUSDC = new Decimal(inputAmount)
+    .mul(inputCurrency.priceInUSDC)
+    .div(10 ** CURRENCIES.USDC.decimals);
+  const outputAsUSDC = new Decimal(outputCurrency.priceInUSDC).div(10 ** CURRENCIES.USDC.decimals);
+  const outputAmount = inputAmountAsUSDC.div(outputAsUSDC);
+  const outputAmountAtoms = outputAmount.mul(10 ** outputCurrency.decimals);
+
+  return outputAmountAtoms
+    .round()
+    .div(10 ** outputCurrency.decimals)
+    .toString();
 }

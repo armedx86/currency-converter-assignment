@@ -18,3 +18,5 @@ export const CURRENCIES = {
     decimals: 6,
   },
 } as const;
+
+export type Currency = (typeof CURRENCIES)[keyof typeof CURRENCIES];
