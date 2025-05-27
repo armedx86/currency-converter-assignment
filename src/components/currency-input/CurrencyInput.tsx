@@ -15,7 +15,7 @@ const numeralOptions: FormatNumeralOptions = {
   stripLeadingZeroes: true,
   numeralPositiveOnly: true,
   // TODO: this must be adjusted based on the count of leading and token decimals
-  numeralDecimalScale: 6,
+  numeralDecimalScale: 4,
 };
 
 export default function CurrencyInput<TCurrencyVal extends string>({

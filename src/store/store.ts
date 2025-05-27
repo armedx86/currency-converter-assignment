@@ -1,11 +1,16 @@
+import { debounce } from "lodash";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
-import { CURRENCIES } from "@/constants";
+import { MINTS_WITH_PRICES } from "@/constants";
 
 type State = {
-  selectedInputMint: string;
-  selectedOutputMint: string;
+  currencyExchangeForm: {
+    inputMint: string;
+    inputAmount: string | null;
+    outputMint: string;
+    outputAmount: string | null;
+  };
   conversionHistory: ConversionEntry[];
 };
 
@@ -21,7 +26,10 @@ export interface ConversionEntry {
 
 type Actions = {
   selectInputMint: (mint: string) => void;
+  setInputAmount: (amount: string | null) => void;
   selectOutputMint: (mint: string) => void;
+  setOutputAmount: (amount: string | null) => void;
+  setInputOutputPair: (inputAmount: string | null, outputAmount: string | null) => void;
   addConversionHistoryEntry: (conversionEntry: ConversionEntry) => void;
 };
 
@@ -36,28 +44,110 @@ const migrations: { fromVersion: number; toVersion: number; migrate: (state: obj
 
 export const useCalculatorStore = create<State & Actions>()(
   persist(
-    immer((set) => ({
-      selectedInputMint: CURRENCIES.USDC.mint,
-      selectedOutputMint: CURRENCIES.SOL.mint,
-      conversionHistory: [],
+    immer((set) => {
+      const addConversionHistoryEntry = () => {
+        set((state) => {
+          if (
+            !state.currencyExchangeForm.inputMint ||
+            !state.currencyExchangeForm.outputMint ||
+            !state.currencyExchangeForm.inputAmount ||
+            !state.currencyExchangeForm.outputAmount
+          ) {
+            return;
+          }
 
-      selectInputMint: (mint: string) =>
-        set((state) => {
-          state.selectedInputMint = mint;
-        }),
-      selectOutputMint: (mint: string) =>
-        set((state) => {
-          state.selectedOutputMint = mint;
-        }),
-      addConversionHistoryEntry: (conversionEntry: ConversionEntry) =>
-        set((state) => {
-          state.conversionHistory.unshift(conversionEntry);
-        }),
-    })),
+          const inputMintData = Object.values(MINTS_WITH_PRICES).find(
+            ({ mint }) => mint === state.currencyExchangeForm.inputMint,
+          );
+          const outputMintData = Object.values(MINTS_WITH_PRICES).find(
+            ({ mint }) => mint === state.currencyExchangeForm.outputMint,
+          );
+
+          if (!inputMintData || !outputMintData) {
+            console.error("Invalid currency selected for conversion history entry.");
+            return;
+          }
+          state.conversionHistory.unshift({
+            timestamp: Date.now(),
+            inputMint: state.currencyExchangeForm.inputMint,
+            inputSymbol: inputMintData.symbol,
+            inputAmount: state.currencyExchangeForm.inputAmount || "0",
+            outputMint: state.currencyExchangeForm.outputMint,
+            outputSymbol: outputMintData.symbol,
+            outputAmount: state.currencyExchangeForm.outputAmount || "0",
+          });
+        });
+      };
+
+      const debouncedAddConversionHistoryEntry = debounce(addConversionHistoryEntry, 300);
+
+      return {
+        currencyExchangeForm: {
+          inputMint: MINTS_WITH_PRICES.USDC.mint,
+          inputAmount: null,
+          outputMint: MINTS_WITH_PRICES.SOL.mint,
+          outputAmount: null,
+        },
+        conversionHistory: [],
+
+        selectInputMint(mint: string) {
+          set((state) => {
+            state.currencyExchangeForm.inputMint = mint;
+            state.currencyExchangeForm.inputAmount = null;
+            state.currencyExchangeForm.outputAmount = null;
+          });
+        },
+        setInputAmount(amount: string | null) {
+          set((state) => {
+            state.currencyExchangeForm.inputAmount = amount;
+          });
+        },
+        selectOutputMint(mint: string) {
+          set((state) => {
+            state.currencyExchangeForm.outputMint = mint;
+            state.currencyExchangeForm.inputAmount = null;
+            state.currencyExchangeForm.outputAmount = null;
+          });
+        },
+        setOutputAmount(amount: string | null) {
+          set((state) => {
+            state.currencyExchangeForm.outputAmount = amount;
+          });
+        },
+        setInputOutputPair(inputAmount: string | null, outputAmount: string | null) {
+          set((state) => {
+            state.currencyExchangeForm.inputAmount = inputAmount;
+            state.currencyExchangeForm.outputAmount = outputAmount;
+          });
+
+          debouncedAddConversionHistoryEntry();
+        },
+        addConversionHistoryEntry,
+      };
+    }),
     {
       name: "converter-store",
       version: STORE_VERSION,
-      migrate: (persistedState, version) => {
+      partialize(state) {
+        const { inputMint, outputMint } = state.currencyExchangeForm;
+        return {
+          currencyExchangeForm: { inputMint, outputMint },
+          conversionHistory: state.conversionHistory,
+        };
+      },
+      merge(persistedState, currentState) {
+        // TODO: need to validate persistedState to ensure it has the correct structure
+        const state = persistedState as State;
+        return {
+          ...currentState,
+          ...state,
+          currencyExchangeForm: {
+            ...currentState.currencyExchangeForm,
+            ...state.currencyExchangeForm,
+          },
+        };
+      },
+      migrate(persistedState, version) {
         if (version === STORE_VERSION) {
           return persistedState;
         }
@@ -69,6 +159,7 @@ export const useCalculatorStore = create<State & Actions>()(
           return persistedState;
         }
 
+        // TODO: need to validate result to ensure it has the correct structure
         return migrations
           .slice(migrationsStartIndex)
           .reduce((state, { fromVersion, toVersion, migrate }) => {

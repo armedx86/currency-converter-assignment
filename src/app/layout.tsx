@@ -30,7 +30,7 @@ export default function RootLayout({
           <h1 className="navbar-center text-xl font-bold tracking-tight">Currency Calculator</h1>
         </header>
         <main className="container mx-auto px-4 py-8 flex-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">{children}</div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">{children}</div>
         </main>
       </body>
     </html>

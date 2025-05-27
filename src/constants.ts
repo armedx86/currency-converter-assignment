@@ -1,4 +1,4 @@
-export const CURRENCIES = {
+export const MINTS_WITH_PRICES = {
   USDC: {
     mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     symbol: "USDC",
@@ -19,4 +19,4 @@ export const CURRENCIES = {
   },
 } as const;
 
-export type Currency = (typeof CURRENCIES)[keyof typeof CURRENCIES];
+export type MintDataWithPrice = (typeof MINTS_WITH_PRICES)[keyof typeof MINTS_WITH_PRICES];
