@@ -1,6 +1,7 @@
 "use client";
 
 import { useCalculatorStore } from "@/store/store";
+import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import Decimal from "decimal.js";
 import { useCallback, useMemo } from "react";
 import CurrencyInput from "@/components/currency-input/CurrencyInput";
@@ -57,6 +58,12 @@ export default function CurrencyExchangeForm() {
     [selectedInputMint, selectedOutputMint, setInputOutputPair, setOutputAmount],
   );
 
+  const handleSwitchTokens = useCallback(() => {
+    const inputMint = selectedInputMint;
+    selectInputMint(selectedOutputMint);
+    selectOutputMint(inputMint);
+  }, [selectInputMint, selectOutputMint, selectedInputMint, selectedOutputMint]);
+
   return (
     <>
       <CurrencyInput
@@ -67,10 +74,18 @@ export default function CurrencyExchangeForm() {
         onAmountChange={onSellAmountChange}
         onCurrencySelect={(mint) => {
           selectInputMint(mint);
-          setInputAmount(null);
-          setOutputAmount(null);
         }}
       />
+      <div className="flex items-center">
+        <div className="h-px w-full bg-th-bkg-4" />
+        <button
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border"
+          onClick={handleSwitchTokens}
+        >
+          <ArrowsUpDownIcon className="size-5" />
+        </button>
+        <div className="h-px w-full" />
+      </div>
       <CurrencyInput
         label="Buy"
         currencyOptions={outputOptions}
@@ -79,8 +94,6 @@ export default function CurrencyExchangeForm() {
         onAmountChange={onBuyAmountChange}
         onCurrencySelect={(mint) => {
           selectOutputMint(mint);
-          setInputAmount(null);
-          setOutputAmount(null);
         }}
       />
     </>

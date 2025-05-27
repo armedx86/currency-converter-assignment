@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "cleave-zen": "^0.0.17",
     "date-fns": "^4.1.0",
     "decimal.js": "^10.5.0",
